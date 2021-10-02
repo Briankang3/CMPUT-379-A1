@@ -3,7 +3,9 @@
 #include <sys/signal.h>
 #include <sys/wait.h>
 #include <iostream>
+#include <cstdlib>
 #include <sstream>
+#include <bits/stdc++.h>
 using namespace std;
 
 void new_suspend(pid_t id){
@@ -44,12 +46,10 @@ void new_kill(pid_t id){
     return;
 }
 
-void jobs(){
-    char buf[100];
+void get_pid(char buf[250]){
     int fd[2];
-
     pid_t pid=fork();
-    if (pid<0) perror("new_ps");
+    if (pid<0) perror("get_pid");
     
     if (pipe(fd)<0) perror("pipe!");
 
@@ -59,16 +59,76 @@ void jobs(){
         dup2(fd[1],STDOUT_FILENO);
         close(fd[1]);
 
-        if (execl("/usr/bin/ps","ps",nullptr)<0) perror("unable to run ps");
+        if (execl("/usr/bin/ps","ps","-o","pid",nullptr)<0) perror("unable to get pids");
     }
 
     else{
         wait(NULL);
-        // extract information
         close(fd[1]);
-        string i;
-        cin>>i;
-        cout<<i;
+
+        int n=read(fd[0],buf,250);
+        if (n<0) perror("unable to read in get_pid");
         close(fd[0]);
     }
+
+    return;
+}
+
+void get_time(char buf[250]){
+    int fd[2];
+    pid_t pid=fork();
+    if (pid<0) perror("get_time");
+    
+    if (pipe(fd)<0) perror("pipe!");
+
+    if (pid==0){
+        // the child process runs "ps" and pipes it into the parent process
+        close(fd[0]);
+        dup2(fd[1],STDOUT_FILENO);
+        close(fd[1]);
+
+        if (execl("/usr/bin/ps","ps","-o","etime",nullptr)<0) perror("unable to get time");
+    }
+
+    else{
+        wait(NULL);
+        close(fd[1]);
+
+        int n=read(fd[0],buf,250);
+        if (n<0) perror("unable to read in get_time");
+        
+        close(fd[0]);
+    }
+
+    return;
+}
+
+void jobs(tms* d){
+    vector<process> table;
+
+    char* buf_one;
+    char* buf_two;
+    buf_one=(char*)malloc(250);
+    buf_two=(char*)malloc(250);
+
+    get_pid(buf_one);
+    get_time(buf_two);
+
+    cout<<string(buf_one)<<'\n';
+    cout<<string(buf_two)<<'\n';
+    
+    tms t;
+    clock_t C;
+
+    C=times(&t);
+    cout<<"Resources Used:\n";
+    cout<<"User time = ";
+    cout<<t.tms_utime-d->tms_utime<<'\n';
+    cout<<"System time = ";
+    cout<<t.tms_stime-d->tms_stime<<'\n';
+
+    free(buf_one);
+    free(buf_two);
+
+    return;
 }
