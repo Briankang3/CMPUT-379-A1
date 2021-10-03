@@ -4,13 +4,14 @@
 #include <cstdint>
 #include <sys/times.h>
 #include <time.h>
+#include <sstream>
 #include <vector>
 using namespace std;
 
 struct process{
-    pid_t id;
+    pid_t pid;
     int seconds;
-    process(pid_t i,int t):id(i),seconds(t){}
+    process():pid(0),seconds(0){}
 };
 
 void new_suspend(pid_t id);
@@ -21,6 +22,6 @@ void new_wait(pid_t id);
 
 void new_kill(pid_t id);
 
-void jobs(tms* d);
+void jobs();
 
 #endif

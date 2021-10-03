@@ -4,9 +4,11 @@
 #include <sys/wait.h>
 #include <iostream>
 #include <cstdlib>
-#include <sstream>
 #include <bits/stdc++.h>
+#include <sys/resource.h>
 using namespace std;
+
+vector<process> table;
 
 void new_suspend(pid_t id){
     // suspend the process with pid id
@@ -46,12 +48,35 @@ void new_kill(pid_t id){
     return;
 }
 
-void get_pid(char buf[250]){
-    int fd[2];
+int convert_time(string T){
+    int t;
+
+    if (T.size()==5){
+        int MIN=10*(T[0]-'0')+(T[1]-'0');
+        int SEC=10*(T[3]-'0')+(T[4]-'0');
+
+        t=60*MIN+SEC;
+    }
+
+    else if (T.size()==8){
+        int H=10*(T[0]-'0')+(T[1]-'0');
+        int MIN=10*(T[3]-'0')+(T[4]-'0');
+        int SEC=10*(T[6]-'0')+(T[7]-'0');
+
+        t=3600*H+60*MIN+SEC;
+    }
+
+    return t;
+}
+
+void get_pid(){
+    char* buf=(char*)malloc(250);
+
+    int fd[2];    
+    if (pipe(fd)<0) perror("pipe!");
+
     pid_t pid=fork();
     if (pid<0) perror("get_pid");
-    
-    if (pipe(fd)<0) perror("pipe!");
 
     if (pid==0){
         // the child process runs "ps" and pipes it into the parent process
@@ -69,17 +94,31 @@ void get_pid(char buf[250]){
         int n=read(fd[0],buf,250);
         if (n<0) perror("unable to read in get_pid");
         close(fd[0]);
+
+        stringstream S(buf);
+        string PID;
+        S>>PID;
+        pid_t id;
+        while (S>>id){
+            process temp=process();
+            temp.pid=id;
+            table.push_back(temp);
+        }
+
+        free(buf);
     }
 
     return;
 }
 
-void get_time(char buf[250]){
-    int fd[2];
+void get_time(){
+    char* buf=(char*)malloc(250);
+
+    int fd[2];    
+    if (pipe(fd)<0) perror("pipe!");
+
     pid_t pid=fork();
     if (pid<0) perror("get_time");
-    
-    if (pipe(fd)<0) perror("pipe!");
 
     if (pid==0){
         // the child process runs "ps" and pipes it into the parent process
@@ -96,39 +135,37 @@ void get_time(char buf[250]){
 
         int n=read(fd[0],buf,250);
         if (n<0) perror("unable to read in get_time");
-        
         close(fd[0]);
+
+        stringstream S(buf);
+        string elapsed,TIME;
+        S>>elapsed;
+        int i=0;
+        while (S>>TIME){
+            table[i].seconds=convert_time(TIME);
+            i++;
+        }
+
+        free(buf);
     }
 
     return;
 }
 
-void jobs(tms* d){
-    vector<process> table;
+void jobs(){
+    get_pid();
+    get_time();
 
-    char* buf_one;
-    char* buf_two;
-    buf_one=(char*)malloc(250);
-    buf_two=(char*)malloc(250);
-
-    get_pid(buf_one);
-    get_time(buf_two);
-
-    cout<<string(buf_one)<<'\n';
-    cout<<string(buf_two)<<'\n';
+    cout<<"# of running processes:"<<table.size()<<'\n';
+    cout<<"process id's and elapsed time are respectively:\n";
+    for (process& p:table) cout<<p.pid<<' '<<p.seconds<<'\n';
     
-    tms t;
-    clock_t C;
+    rusage usage;
+    if (getrusage(RUSAGE_CHILDREN,&usage)<0) perror("getrusage");
 
-    C=times(&t);
-    cout<<"Resources Used:\n";
-    cout<<"User time = ";
-    cout<<t.tms_utime-d->tms_utime<<'\n';
-    cout<<"System time = ";
-    cout<<t.tms_stime-d->tms_stime<<'\n';
-
-    free(buf_one);
-    free(buf_two);
+    cout<<"Completed Processes:\n";
+    cout<<"user time:"<<usage.ru_utime.tv_sec<<'\n';
+    cout<<"system time:"<<usage.ru_stime.tv_sec<<'\n';
 
     return;
 }

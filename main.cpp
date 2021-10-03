@@ -7,9 +7,9 @@
 using namespace std;
 
 int main(){
-    tms d,t;
-    clock_t D=times(&d);
-    clock_t C;
+    static tms d,t;
+    static clock_t D=times(&d);
+    static clock_t C;
 
     while (1){
         string input;
@@ -61,7 +61,7 @@ int main(){
             new_resume(id);
         }
 
-        else if (input.compare("jobs")==0) jobs(&d);
+        else if (input.compare("jobs")==0) jobs();
         
         else{
             VS argv;
