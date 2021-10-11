@@ -1,1 +1,1 @@
-# CMPUT-379-A1
+In this project I created another shell that simulates a normal Linux terminal. Once the executable file is run, it asks for user input, then trys to run the corresponding processes depending on user input. 
